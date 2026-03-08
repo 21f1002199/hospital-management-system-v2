@@ -1,0 +1,895 @@
+openapi: 3.0.0
+info:
+  title: Hospital Management System API
+  description: API documentation for the Hospital Management System.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+
+paths:
+  /routes/admin/dashboard:
+    get:
+      summary: Get admin dashboard statistics
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctors:
+                    type: integer
+                  patients:
+                    type: integer
+                  appointments:
+                    type: integer
+
+  /routes/admin/doctors:
+    get:
+      summary: List all doctors
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: A list of all doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    contact:
+                      type: string
+                    specialization:
+                      type: string
+                    department:
+                      type: string
+                    qualifications:
+                      type: string
+    post:
+      summary: Create a new doctor
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  default: DoctorPass123!
+                full_name:
+                  type: string
+                email:
+                  type: string
+                specialization:
+                  type: string
+                department:
+                  type: string
+                contact:
+                  type: string
+                qualifications:
+                  type: string
+      responses:
+        '201':
+          description: Doctor created successfully
+        '400':
+          description: Validation error (e.g., username/email exists)
+
+  /routes/admin/doctors/{doctor_id}:
+    put:
+      summary: Update a doctor
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: doctor_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                specialization:
+                  type: string
+                qualifications:
+                  type: string
+                contact:
+                  type: string
+                department_name:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                available_slots:
+                  type: object
+      responses:
+        '200':
+          description: Doctor updated successfully
+        '400':
+          description: Email already in use
+    delete:
+      summary: Delete a doctor and their user account
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Doctor removed successfully
+
+  /routes/admin/appointments:
+    get:
+      summary: List recent appointments (limit 200)
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: A list of recent appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    doctor_name:
+                      type: string
+                    patient_name:
+                      type: string
+                    scheduled_at:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+
+  /routes/admin/patients:
+    get:
+      summary: List all patients
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: A list of all patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    contact:
+                      type: string
+                    gender:
+                      type: string
+                    dob:
+                      type: string
+                      format: date
+                    created_at:
+                      type: string
+                      format: date-time
+
+  /routes/admin/patients/{id}:
+    delete:
+      summary: Delete a patient and their user account
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Patient removed successfully
+
+  /routes/admin/patients/{patient_id}/history:
+    get:
+      summary: Get medical history for a specific patient
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: patient_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Patient medical history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    date:
+                      type: string
+                      format: date-time
+                    doctor_name:
+                      type: string
+                    specialization:
+                      type: string
+                    reason:
+                      type: string
+                    diagnosis:
+                      type: string
+                    prescription:
+                      type: object
+                    notes:
+                      type: string
+
+  /routes/admin/export:
+    post:
+      summary: Trigger a CSV export task via Celery
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [doctors, patients, patient_history, past_appointments]
+                query:
+                  type: string
+                patient_id:
+                  type: integer
+      responses:
+        '202':
+          description: Export task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                  task_id:
+                    type: string
+
+  /routes/admin/export/status/{task_id}:
+    get:
+      summary: Check status of an export task
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                  filepath:
+                    type: string
+                  error:
+                    type: string
+
+  /routes/admin/export/download/{task_id}:
+    get:
+      summary: Download completed CSV export
+      tags:
+        - Admin
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV file attachment
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Download failed or expired
+
+
+# ==========================================
+  # DOCTOR ROUTES
+  # ==========================================
+
+  /routes/doctor/appointments:
+    get:
+      summary: Get doctor's scheduled appointments
+      tags:
+        - Doctor
+      parameters:
+        - in: query
+          name: range
+          schema:
+            type: string
+            enum: [day, week]
+            default: day
+          description: Filter appointments by today or the next 7 days
+      responses:
+        '200':
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    patient_id:
+                      type: integer
+                    patient_name:
+                      type: string
+                    scheduled_at:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    reason:
+                      type: string
+
+  /routes/doctor/appointments/{appointment_id}/cancel:
+    put:
+      summary: Cancel a specific appointment
+      tags:
+        - Doctor
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment successfully cancelled
+        '403':
+          description: Unauthorized to cancel this appointment
+        '404':
+          description: Appointment not found
+
+  /routes/doctor/appointments/{appointment_id}/complete:
+    put:
+      summary: Complete an appointment and add treatment records
+      tags:
+        - Doctor
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                diagnosis:
+                  type: string
+                prescription:
+                  type: object
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Appointment completed and treatment recorded
+        '403':
+          description: Unauthorized to complete this appointment
+        '404':
+          description: Appointment not found
+
+  /routes/doctor/patients:
+    get:
+      summary: List unique patients assigned to the doctor
+      tags:
+        - Doctor
+      responses:
+        '200':
+          description: A list of the doctor's patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    contact:
+                      type: string
+                    gender:
+                      type: string
+                    dob:
+                      type: string
+                      format: date
+
+  /routes/doctor/availability:
+    get:
+      summary: Get doctor's available time slots
+      tags:
+        - Doctor
+      responses:
+        '200':
+          description: Current availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available_slots:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+    put:
+      summary: Update doctor's available time slots
+      tags:
+        - Doctor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slots:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+      responses:
+        '200':
+          description: Availability updated successfully
+        '400':
+          description: Invalid action (e.g., trying to add slots in the past)
+
+  /routes/doctor/patients/{patient_id}/history:
+    get:
+      summary: Get medical history for a specific assigned patient
+      tags:
+        - Doctor
+      parameters:
+        - in: path
+          name: patient_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Patient medical history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    date:
+                      type: string
+                      format: date-time
+                    doctor_name:
+                      type: string
+                    specialization:
+                      type: string
+                    reason:
+                      type: string
+                    diagnosis:
+                      type: string
+                    prescription:
+                      type: object
+                    notes:
+                      type: string
+
+  /routes/doctor/export:
+    post:
+      summary: Trigger a CSV export task for doctor records
+      tags:
+        - Doctor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [patient_history, assigned_patients]
+                query:
+                  type: string
+                patient_id:
+                  type: integer
+      responses:
+        '202':
+          description: Export task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                  task_id:
+                    type: string
+
+  /routes/doctor/export/status/{task_id}:
+    get:
+      summary: Check status of a doctor export task
+      tags:
+        - Doctor
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                  filepath:
+                    type: string
+                  error:
+                    type: string
+
+  /routes/doctor/export/download/{task_id}:
+    get:
+      summary: Download completed CSV export for the doctor
+      tags:
+        - Doctor
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV file attachment
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Download failed or expired
+
+# ==========================================
+  # PATIENT ROUTES
+  # ==========================================
+
+  /routes/patient/profile:
+    get:
+      summary: Get the current patient's profile
+      tags:
+        - Patient
+      responses:
+        '200':
+          description: Patient profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  full_name:
+                    type: string
+                  email:
+                    type: string
+                  contact:
+                    type: string
+                  gender:
+                    type: string
+                  dob:
+                    type: string
+                    format: date
+    put:
+      summary: Update the current patient's profile
+      tags:
+        - Patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                contact:
+                  type: string
+                gender:
+                  type: string
+                dob:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Profile updated successfully
+
+  /routes/patient/doctors:
+    get:
+      summary: Get directory of all doctors and their availability
+      tags:
+        - Patient
+      responses:
+        '200':
+          description: List of doctors with available and booked slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    specialization:
+                      type: string
+                    department:
+                      type: string
+                    qualifications:
+                      type: string
+                    available_slots:
+                      type: object
+                    booked_slots:
+                      type: array
+                      items:
+                        type: string
+                        format: date-time
+
+  /routes/patient/appointments:
+    get:
+      summary: Get the current patient's appointments
+      tags:
+        - Patient
+      responses:
+        '200':
+          description: List of the patient's appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    doctor_name:
+                      type: string
+                    specialization:
+                      type: string
+                    scheduled_at:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    reason:
+                      type: string
+    post:
+      summary: Book a new appointment
+      tags:
+        - Patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doctor_id:
+                  type: integer
+                scheduled_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Appointment successfully booked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                  appointment_id:
+                    type: integer
+        '400':
+          description: Missing required fields
+        '409':
+          description: Time slot conflict (doctor already booked or patient already has an appointment)
+
+  /routes/patient/appointments/{appointment_id}:
+    delete:
+      summary: Cancel a scheduled appointment
+      tags:
+        - Patient
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment successfully cancelled
+        '403':
+          description: Unauthorized to cancel this appointment
+        '404':
+          description: Appointment not found
+
+  /routes/patient/history:
+    get:
+      summary: Get the current patient's medical history and prescriptions
+      tags:
+        - Patient
+      responses:
+        '200':
+          description: Medical history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    date:
+                      type: string
+                      format: date-time
+                    doctor_name:
+                      type: string
+                    diagnosis:
+                      type: string
+                    prescription:
+                      type: object
+                    notes:
+                      type: string
+
+  /routes/patient/export:
+    post:
+      summary: Trigger a CSV export task for patient history
+      tags:
+        - Patient
+      responses:
+        '202':
+          description: Export task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                  task_id:
+                    type: string
+        '404':
+          description: Patient profile not found
+
+  /routes/patient/export/status/{task_id}:
+    get:
+      summary: Check status of a patient export task
+      tags:
+        - Patient
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                  filepath:
+                    type: string
+                  error:
+                    type: string
+
+  /routes/patient/export/download/{task_id}:
+    get:
+      summary: Download completed CSV export for the patient
+      tags:
+        - Patient
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV file attachment
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Download failed or expired
